@@ -1,0 +1,21 @@
+flutter_launcher_icons:
+  image_path: assets/images/private-key.png
+  android: true
+  ios: true
+  adaptive_icon_background: "#111113"
+  adaptive_icon_foreground: assets/images/private-key.png
+  adaptive_icon_foreground_inset: 24
+  remove_alpha_ios: true
+  background_color_ios: "#111113"
+  web:
+    generate: true
+    image_path: assets/images/private-key.png
+    background_color: "#111113"
+    theme_color: "#FF1744"
+  windows:
+    generate: true
+    image_path: assets/images/private-key.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/images/private-key.png
