@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'orientation_controller.dart';
+import 'face_protection_controller.dart';
 
 class OrientationDialog extends StatelessWidget {
-  const OrientationDialog({super.key, required this.controller});
+  const OrientationDialog({
+    super.key,
+    required this.controller,
+    required this.faces,
+  });
   final OrientationController controller;
+  final FaceProtectionController faces;
 
   Widget _slider(String label, double value, ValueChanged<double> update) =>
       Column(
@@ -27,50 +33,67 @@ class OrientationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
+    listenable: Listenable.merge([controller, faces]),
     builder: (context, _) => AlertDialog(
-      title: const Text('Phone orientation'),
+      title: const Text('Privacy settings'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _slider(
-              'Theta / Tilt threshold',
-              controller.thetaThreshold,
-              (value) =>
-                  controller.setThresholds(value, controller.phiThreshold),
-            ),
-            const SizedBox(height: 16),
-            _slider(
-              'Phi / Yaw threshold',
-              controller.phiThreshold,
-              (value) =>
-                  controller.setThresholds(controller.thetaThreshold, value),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              controller.error ??
-                  (!controller.ready
-                      ? 'Waiting for sensor...'
-                      : controller.triggered
-                      ? 'Threshold exceeded'
-                      : 'Within thresholds'),
-              style: TextStyle(
-                color: controller.protected
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
+            if (controller.enabled) ...[
+              _slider(
+                'Theta / Tilt threshold',
+                controller.thetaThreshold,
+                (value) =>
+                    controller.setThresholds(value, controller.phiThreshold),
               ),
+              const SizedBox(height: 16),
+              _slider(
+                'Phi / Yaw threshold',
+                controller.phiThreshold,
+                (value) =>
+                    controller.setThresholds(controller.thetaThreshold, value),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                controller.error ??
+                    (!controller.ready
+                        ? 'Waiting for sensor...'
+                        : controller.triggered
+                        ? 'Threshold exceeded'
+                        : 'Within thresholds'),
+                style: TextStyle(
+                  color: controller.protected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+              const Divider(height: 28),
+            ],
+            Row(
+              children: [
+                const Icon(Icons.videocam_outlined, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(faces.status)),
+                if (faces.error != null)
+                  IconButton(
+                    tooltip: 'Retry camera access',
+                    onPressed: faces.retry,
+                    icon: const Icon(Icons.refresh),
+                  ),
+              ],
             ),
           ],
         ),
       ),
       actions: [
-        TextButton.icon(
-          onPressed: controller.ready ? controller.calibrate : null,
-          icon: const Icon(Icons.restart_alt),
-          label: const Text('Calibrate'),
-        ),
+        if (controller.enabled)
+          TextButton.icon(
+            onPressed: controller.ready ? controller.calibrate : null,
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Calibrate'),
+          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),

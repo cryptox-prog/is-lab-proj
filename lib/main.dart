@@ -6,13 +6,16 @@ import 'dart:convert';
 import 'orientation_dialog.dart';
 import 'orientation_controller.dart';
 import 'content_vault.dart';
+import 'face_monitor.dart';
+import 'face_protection_controller.dart';
 
 void main() => runApp(const MyApp());
 
 const crimson = Color(0xFFFF1744);
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.faceMonitor});
+  final FaceMonitor? faceMonitor;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -31,12 +34,13 @@ class MyApp extends StatelessWidget {
       ),
       useMaterial3: true,
     ),
-    home: const HomeScreen(),
+    home: HomeScreen(faceMonitor: faceMonitor),
   );
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.faceMonitor});
+  final FaceMonitor? faceMonitor;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -44,6 +48,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _orientation = OrientationController();
+  late final FaceProtectionController _faces;
   final _vault = ContentVault();
   final _scroll = ScrollController();
   bool _lastProtected = true;
@@ -51,6 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _faces = FaceProtectionController(monitor: widget.faceMonitor);
+    _faces.addListener(_syncProtection);
+    _faces.start();
     _orientation.addListener(_syncProtection);
     _orientation.start();
     _prepareContent();
@@ -86,11 +94,11 @@ class _HomeScreenState extends State<HomeScreen> {
     text('byline', 'By Alex Morgan / October 6, 2026 / 8 min read');
     await _vault.initialize(content);
     if (!mounted) return;
-    await _vault.setLocked(_orientation.protected);
+    await _vault.setLocked(_orientation.protected || _faces.protected);
   }
 
   void _syncProtection() {
-    final protected = _orientation.protected;
+    final protected = _orientation.protected || _faces.protected;
     if (_lastProtected == protected) return;
     _lastProtected = protected;
     if (protected) {
@@ -104,6 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _orientation.removeListener(_syncProtection);
     _orientation.dispose();
+    _faces.removeListener(_syncProtection);
+    _faces.dispose();
     _vault.dispose();
     _scroll.dispose();
     super.dispose();
@@ -134,7 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.settings_outlined),
           onPressed: () => showDialog<void>(
             context: context,
-            builder: (context) => OrientationDialog(controller: _orientation),
+            builder: (context) =>
+                OrientationDialog(controller: _orientation, faces: _faces),
           ),
         ),
       ],

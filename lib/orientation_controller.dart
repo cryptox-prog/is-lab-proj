@@ -2,9 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 class OrientationController extends ChangeNotifier with WidgetsBindingObserver {
+  bool get enabled =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
   static const channel = EventChannel('privacy_screen/orientation');
   StreamSubscription<dynamic>? _subscription;
   double thetaThreshold = 60;
@@ -29,7 +34,7 @@ class OrientationController extends ChangeNotifier with WidgetsBindingObserver {
       ready &&
       (theta!.abs() * 180 / math.pi > thetaThreshold + 1e-9 ||
           phi!.abs() * 180 / math.pi > phiThreshold + 1e-9);
-  bool get protected => !ready || triggered;
+  bool get protected => !_active || (enabled && (!ready || triggered));
 
   void start() {
     WidgetsBinding.instance.addObserver(this);
@@ -37,6 +42,7 @@ class OrientationController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _listen() {
+    if (!enabled) return;
     if (_subscription != null || _disposed) return;
     _subscription = channel.receiveBroadcastStream().listen(
       (event) {

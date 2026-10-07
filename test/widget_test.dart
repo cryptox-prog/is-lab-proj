@@ -7,16 +7,20 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:privacy_screen_software/main.dart';
 
+import 'fake_face_monitor.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = 'privacy_screen/orientation';
   const codec = StandardMethodCodec();
   final calls = <String>[];
+  late FakeFaceMonitor faceMonitor;
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   setUp(() {
     calls.clear();
+    faceMonitor = FakeFaceMonitor();
     messenger.setMockMethodCallHandler(const MethodChannel(channel), (
       call,
     ) async {
@@ -78,7 +82,7 @@ void main() {
       await tester.pump();
     }
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(calls, contains('listen'));
@@ -125,7 +129,7 @@ void main() {
   });
 
   testWidgets('Home screen shows dark placeholder content', (tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
     await send(tester, 0, 0);
     await waitFor(tester, find.text('Notes on everyday life'));
 
@@ -153,7 +157,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       try {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
         expect(find.text('Notes on everyday life'), findsNothing);
         await send(tester, 0, 0);
         await waitFor(tester, find.text('Notes on everyday life'));
@@ -178,6 +182,26 @@ void main() {
         expect(find.byType(Image), findsNothing);
         await send(tester, 0, 0);
         await waitFor(tester, find.byType(Image));
+        faceMonitor.emit(2);
+        await tester.pump();
+        expect(find.byType(Image), findsNothing);
+        faceMonitor.emit(1);
+        await tester.pump();
+        expect(find.byType(Image), findsNothing);
+        faceMonitor.emit(1);
+        faceMonitor.emit(1);
+        await waitFor(tester, find.byType(Image));
+        await send(tester, math.pi / 2, 0);
+        faceMonitor.emit(1);
+        faceMonitor.emit(1);
+        faceMonitor.emit(1);
+        await tester.pump();
+        expect(find.byType(Image), findsNothing);
+        await send(tester, 0, 0);
+        await waitFor(tester, find.byType(Image));
+        faceMonitor.fail();
+        await tester.pump();
+        expect(find.byType(Image), findsNothing);
         await tester.pumpWidget(const SizedBox());
         await tester.pumpAndSettle();
       } finally {

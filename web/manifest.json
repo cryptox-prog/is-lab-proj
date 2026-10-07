@@ -1,6 +1,6 @@
 {
-    "name": "privacy_screen_software",
-    "short_name": "privacy_screen_software",
+    "name": "PrivaSc",
+    "short_name": "PrivaSc",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#111113",
