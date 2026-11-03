@@ -1,0 +1,225 @@
+\RequirePackage[T1]{fontenc}
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,amssymb,graphicx,booktabs,array,url}
+\usepackage[hidelinks]{hyperref}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\degc}{^{\circ}}
+\newcommand{\asset}[2]{\IfFileExists{#1}{\includegraphics[width=\columnwidth]{#1}}{\fbox{\parbox[c][25mm][c]{0.92\columnwidth}{\centering #2\\Illustrative figure pending export}}}}
+\newcommand{\shot}[2]{\fbox{\parbox[c][28mm][c]{0.92\columnwidth}{\centering\textbf{App screenshot placeholder #1}\\#2\\No device capture supplied.}}}
+\title{Context-Aware Visual Privacy on Smartphones: Adaptive Protection and Readable-but-Undetected Regions}
+\author{\IEEEauthorblockN{Author details pending}\IEEEauthorblockA{University prototype project\\Institution and contact details pending}}
+\begin{document}
+\maketitle
+\begin{abstract}
+An observer can read a smartphone while remaining outside its front-camera detection region. This paper studies that residual exposure through a Flutter privacy prototype and a geometric comparison of three complementary approaches: a privacy-screen protector, a clip-on fisheye, and an external human-tracking radar. The application combines local face counting, orientation sensing, and a session-only AES-256-GCM vault. An Android-local embedding verifier, PIN fallback, and reauthorization latch extend the baseline; physical validation remains pending. We define the readable-but-undetected region as readable positions outside effective sensing coverage. Using explicitly assumed scenario angles of 75 degrees for the camera, 60 degrees for filter readability, and 120 degrees for effective fisheye coverage, analytical widths are evaluated at 35, 40, 55, and 60 cm. At 40 cm the camera and filtered readable widths are 61.39 and 46.19 cm, respectively. Their ideal aligned containment does not imply protection against body occlusion. A separate simulator illustrates all six sensor/filter combinations. No physical calibration dataset, recognition benchmark, or measured exposure latency is available; numerical results are geometric estimates rather than device measurements. A calibration protocol and fillable data schema support subsequent empirical evaluation.
+\end{abstract}
+\begin{IEEEkeywords}
+shoulder surfing, visual privacy, AES-GCM, face verification, privacy filter, fisheye, radar
+\end{IEEEkeywords}
+
+\section{Introduction}
+Sensitive text and images remain exposed while a legitimate user views them. Encryption of stored bytes cannot prevent an observer from reading those rendered pixels. Shoulder surfing also depends on context: Abdrabou et al. study opportunistic observation in public transportation using mobile eye tracking and discuss the methodological difficulty of studying it in natural settings~\cite{Abdrabou2025Shoulder}. A privacy mechanism therefore needs both a rendering policy and an account of where an observer can remain unseen.
+
+The motivating prototype detects faces through the front camera and monitors device orientation. The phone is reported by the project owner to have a privacy-screen protector; the protector-plus-app combination is the primary intended physical configuration. Neither the installed filter nor the camera has an accompanying calibration record. We consequently present a software inspection and scenario analysis, not a completed physical experiment.
+
+The contribution is a common geometric objective, the \emph{readable-but-undetected region}, linking the app to three sensing/filter approaches. We derive finite-plane widths, distinguish optical specifications from usable detection angles, and formulate radar counting without assigning identity to radar targets. We also specify reproducible calibration and authentication evaluation procedures. The numerical tables are computed from supplied reference ranges and explicit assumptions; they must not be interpreted as measured accuracy or a privacy guarantee.
+
+\section{Related Work and Source Scope}
+\emph{iScreen} is a published software-based screen-privacy system for mobile devices~\cite{Lei2021iScreen}. Its title, authors, venue, pages, and DOI are identifiable from the proceedings record; we make no comparative accuracy or latency claim without inspecting its full method. Abdrabou et al.~\cite{Abdrabou2025Shoulder} motivate studying natural observer behavior, but do not calibrate the device used here.
+
+Huo et al. investigate an image-encryption construction involving a three-dimensional hyperchaotic system~\cite{Huo2025AES}. That construction is not implemented in this repository; this prototype uses the standard AES-GCM interface. The relevant cryptographic design reference is NIST's GCM recommendation~\cite{NISTGCM}, rather than a claimed performance transfer from an image-encryption paper. Liu et al. describe a monocular depth-estimation network~\cite{Liu2025Monocular}. Depth estimation could inform future spatial reasoning, but is neither owner verification nor an implemented component here. ML Kit explicitly separates face detection from recognition~\cite{MLKit}; a face count alone cannot identify the owner.
+
+Wide-angle optics require an appropriate projection and calibration model. Kannala and Brandt~\cite{Kannala2006} describe models for conventional, wide-angle, and fisheye lenses. Manufacturer documentation establishes an example clip-on's nominal angle~\cite{Kenko}, and radar documentation establishes module-level operating parameters~\cite{LD2450,LDProtocol}. Neither establishes detection reliability in our proposed phone configuration.
+
+Two additional works were supplied by the project owner: Zeeshan, Moradpoor, and La Spada's \emph{Observer-Aware Runtime Exposure Mitigation for Mobile Edge Devices}, labeled SafeComp 2026/ResearchGate 406502212, and Prasad's \emph{From Screen Exposure to Street-Level Risk}, labeled 2026/ResearchGate 404821939, DOI 10.13140/RG.2.2.22618.30400. Full authoritative publication metadata and contents were not independently verified. They are preserved in a separate supplied bibliography, and do not support factual claims in this paper.
+
+\section{Threat Model and Objective}
+The owner views sensitive content on an uncompromised phone. An unauthorized observer may stand laterally, behind the owner, or outside the selfie camera's usable region. We consider direct visual exposure; remote compromise, forensic extraction, reflection attacks, telephoto recording, and an adversary controlling the sensor feed are outside the evaluated model. Authentication spoofing remains an explicit limitation rather than an established defense.
+
+At time $t$, let $R(t)$ be positions from which content is readable, and $D_c(t)$ positions at which the camera can actually detect an observer. Define
+\begin{equation}
+ B(t)=R(t)\setminus D(t),
+ \label{eq:blind}
+\end{equation}
+where $D=D_c$ for optical-only operation. For an ideal independent presence sensor, $D_c\cup D_r$ describes spatial coverage, but radar count-based policy requires an additional distinction: a reported radar target is not necessarily sufficient to trigger protection. We therefore also define $B_{\rm policy}$ as readable observer positions for which the final threat rule remains false. If radar sees only the observer and misses the owner, its count can equal one; that observer lies outside the policy's effective protection even though it lies inside $D_r$.
+
+Coverage is conditional on range, illumination, pose, occlusion, and detector confidence. A geometric sector represents an upper bound on potentially usable sensing positions. For a finite evaluation region $\Omega$, $|B\cap\Omega|/|R\cap\Omega|$ is a possible area-based exposure metric when the denominator is nonzero; it is not an attack probability. The present paper reports widths and examples rather than estimating this metric from human trials.
+
+\section{Base Software and Authentication Contract}
+\subsection{Inspected Implementation}
+The repository uses Flutter with native-mobile ML Kit face detection. The inspected camera monitor selects the front camera, requests medium resolution, disables audio, uses fast detection with minimum face size 0.08, and throttles processing to at most one frame every 200 ms. These are code settings, not measured throughput. Detection errors, application inactivity, and a three-second stale-data timeout protect content. Android orientation comes from the game rotation vector through a platform event channel. Device-dependent orientation thresholds require separate calibration.
+
+The inspected \texttt{ContentVault} creates an AES-256-GCM session key, seals each item using its identifier as associated data, and exposes clear buffers only after decryption. Locking drops application references to clear content and invalidates in-flight decryption through a revision counter. This does not establish secure erasure of managed memory, GPU textures, or decoded image caches. Bundled demonstration assets remain available in the application package; this is not encrypted asset distribution. The session key remains in process memory.
+
+The baseline face controller automatically restored content after three frames with at most one face. The current extension replaces count-only restoration with authentication and a persistent reauthorization requirement. Android uses MobileFaceNet with ML Kit landmarks and tracking; desktop and web retain count-based sensing and PIN fallback. Implementation details below are based on source inspection and the integration report, not physical Android validation. No Android device was connected for this deliverable.
+
+\begin{table}[t]\caption{Evidence boundary for the application.}\label{tab:status}\centering\footnotesize
+\begin{tabular}{@{}P{0.39\columnwidth}P{0.52\columnwidth}@{}}\toprule
+Component & Evidence/status\\\midrule
+Local face count, orientation stream & Present in inspected source; device performance unmeasured\\
+AES-256-GCM session vault & Present; no claim of whole-device protection\\
+Privacy protector & Owner-reported installed; uncalibrated\\
+Owner embeddings, PIN, persistent latch & Implemented extension; physical validation pending\\
+Fisheye and external radar & Proposed/modelled; no phone integration established\\\bottomrule
+\end{tabular}\end{table}
+
+\begin{figure}[t]\centering
+\asset{figures/architecture.pdf}{Camera and orientation $\rightarrow$ policy $\rightarrow$ pixel gate and AES vault; authentication authorizes restoration; radar is proposed.}
+\caption{Architecture and evidence boundaries. Authentication is an implemented extension awaiting physical validation; radar remains proposed.}\label{fig:arch}\end{figure}
+
+\subsection{Required Reauthorization State Machine}
+The extension distinguishes authorized display, threat detected, protected content, and reauthentication required. Sensitive widgets are gated while authentication or the vault is locked. A state update schedules Flutter rebuilding: obscuration takes effect on the next paint, not synchronously in the sensor callback. Asynchronous encryption alone cannot retract an already displayed frame; the delay to the first fully obscured frame remains unmeasured. Once protected, disappearance of an additional observer does not itself authorize access. Correct PIN entry or three authorized face results can reauthorize after physical sensing clears. Incorrect PIN attempts remain locked. A PIN-authorized session can tolerate poor identity evidence for a continuously tracked single face, but not multiple faces, unsafe orientation, or camera failure; tracking/count changes invalidate this exception. This explicit fallback policy is weaker than continuous biometric identity assurance.
+
+The Android verifier uses a MobileFaceNet model with $112\times112$ RGB input and 192-dimensional output. Chen et al. provide the primary architecture reference~\cite{MobileFaceNets}; their published performance is not a benchmark of this app or these weights. ML Kit landmarks and tracking are enabled. Two-eye alignment operates on supported NV21 frames; clipping, insufficient size, extreme pose, poor exposure, or unsupported layout yields uncertainty. Enrollment requires at least eight samples separated by at least 400 ms; normalized embeddings form the reference. Given vectors $e$ and $v$, cosine distance is $1-e^Tv$. For leave-one-out genuine enrollment distances with mean $\mu$, standard deviation $\sigma$, and maximum $m$, the prototype proposes $\tau=\max(m+0.02,\mu+3\sigma+0.02)$. It rejects enrollment when this exceeds 0.20, otherwise imposing a 0.04 floor. These constants are unvalidated prototype policy bounds, not measured false-accept guarantees. Genuine-only enrollment cannot calibrate impostor rejection. Independent genuine/impostor development and held-out evaluation are still required. No liveness mechanism is provided, so presentation attacks remain possible.
+
+The model is pinned to a specific repository revision~\cite{ModelArtifact}. The manifest at \path{assets/models/README.md} records its 5,233,552-byte size and full SHA-256, checked at loading. For reproducibility, the repository and revision are:
+\begin{quote}\raggedright\footnotesize
+\path{MCarlomagno/FaceRecognitionAuth}\\
+\texttt{82372440f26d699e13996}\allowbreak\texttt{014a01805f925dbcdbb}\\
+SHA-256:\\
+\texttt{be4bc7cfc53f7bc336d0f28b1ab92535}\allowbreak\texttt{f618c913a422b683210750f6b5354854}
+\end{quote}
+The hosting repository has a BSD-3-Clause license, but separate pretrained-weight and training-dataset rights are not established by that license. This is an unresolved artifact-provenance limitation, not a claim of cleared biometric redistribution rights or certification.
+
+The PIN implementation uses PBKDF2-HMAC-SHA256 with 210,000 iterations, a random 32-byte salt, a 32-byte derived value, and Flutter secure storage. Three failed attempts impose a persisted 30-second cooldown. Successful PIN verification cannot bypass a persisting multi-person or unsafe-orientation threat. Storage integration and real-device timing remain unmeasured; a low-entropy PIN is not equivalent to a high-entropy encryption key. Source-level checks do not establish hardware-backed key protection or resistance to a compromised operating system.
+
+\begin{figure}[t]\centering\shot{1}{Authorized view: text and image visible.}\caption{Required app capture: authorized content. Placeholder, not a device result.}\end{figure}
+\begin{figure}[t]\centering\shot{2}{Additional observer: sensitive content obscured.}\caption{Required app capture: threat-triggered protection. Placeholder, not a measured response.}\end{figure}
+\begin{figure}[t]\centering\shot{3}{Locked view with face/PIN reauthorization.}\caption{Required app capture: reauthorization screen. Placeholder pending device capture.}\end{figure}
+
+\section{Field-of-View Limitation}
+Camera coverage and display readability originate near the phone but need not coincide in orientation, range, or effective angular boundary. A person outside a camera sector can read an unfiltered display. Even an observer inside the nominal camera cone may be hidden behind the owner's head or shoulder. Wider optics address angular exclusion, whereas the latter is an occlusion problem. A privacy filter narrows $R$; a fisheye may enlarge $D_c$; an independently positioned radar may enlarge auxiliary presence coverage. These actions affect different sets in (\ref{eq:blind}).
+
+\section{Approach 1: Protector and Application}
+The main intended configuration combines the existing app with the installed privacy protector. For an ideal aligned point-origin model, the assumed readable half-angle is $30\degc$ and camera half-angle is $37.5\degc$. The readable sector is then contained in the camera sector. This removes angular-only blind positions inside their common valid range, not optical detection failures. A lateral alignment error exceeding $7.5\degc$ can break full containment; actual margins must be calibrated for both sides.
+
+Filter readability is a task-dependent transition, not a universal binary cutoff. Brightness, contrast, font size, ambient light, viewing elevation, and portrait/landscape rotation can change it. A two-way protector can constrain one axis while leaving another readable. Directly-behind shoulder surfing, body occlusion, and positions outside the validated camera range remain possible. No real-world complete containment is demonstrated.
+
+\begin{figure}[t]\centering\asset{figures/angular_geometry.pdf}{Normal camera and narrower privacy-readable sector.}\caption{Camera/filter geometry under scenario assumptions. Any plotted sector is ideal coverage, not measured detection probability.}\end{figure}
+
+\section{Approach 2: Fisheye-Assisted Detection}
+Kenko's REAL PRO clip lens is a documented nominal $180\degc$ fisheye example~\cite{Kenko}. It is not identified as an attachment owned or calibrated by this project. The supplied $180$--$210\degc$ range is generic reference context; $210\degc$ is not attributed to this product. Neither the exact projection function of the combined phone-plus-attachment optics nor an effective person-detection angle is available. We use $120\degc$ solely as an assumed effective sector for sensitivity analysis, with and without the filter.
+
+For off-axis ray angle $\alpha$ in radians, common image-radius mappings are
+\begin{align}
+ r_{\rm eqd}&=f\alpha,&r_{\rm eqs}&=2f\sin(\alpha/2),\\
+ r_{\rm stereo}&=2f\tan(\alpha/2),&r_{\rm ortho}&=f\sin\alpha.
+\end{align}
+These mappings concern image formation, not lateral plane widths~\cite{Kannala2006}. An equidistant curve, if drawn, is explicitly illustrative; it is not a fitted model for Kenko or this phone. Effective angular detection should instead be measured across the combined image pipeline, including cropping and detector thresholds. At $180\degc$ a forward plane intersection is unbounded, and beyond it some rays point behind that plane. We never assign a finite tangent width to the nominal $180$--$210\degc$ optic.
+
+For a calibrated or assumed \emph{sub-180-degree effective angular sector}, its forward-plane intersection can still be computed geometrically; doing so does not assert a rectilinear image projection. Edge faces may be small or distorted, and alignment, clipping, bulk, and body occlusion persist. A filter narrows readability independently of these image effects.
+
+\begin{figure}[t]\centering\asset{figures/fisheye_geometry.pdf}{Nominal optical sector versus assumed effective detection sector.}\caption{Fisheye scenario using an assumed effective sector. Nominal optics and usable detection are distinct; actual projection is unknown.}\end{figure}
+
+\section{Approach 3: External Radar}
+The proposed tabletop architecture uses a module such as the HLK-LD2450, whose manufacturer documentation lists 24 GHz FMCW operation, up to three tracked targets, a maximum reference range of 6 m, detection angle $\pm60\degc$, and a 10 Hz update rate~\cite{LD2450}. These are module specifications, not measurements for a desk installation. The supplied $70\degc$ vertical angle is retained as unverified reference context and is unused in the horizontal calculations. The protocol describes target-coordinate reporting~\cite{LDProtocol}; this repository has no verified radar transport or fusion implementation.
+
+The proposed rule is
+\begin{equation}
+ T=T_{\rm camera}\lor T_{\rm orientation}\lor(N_r>1)\lor U,
+\end{equation}
+where $U$ represents required-sensor uncertainty in the proposed future app integration. The simulator implements only the requested radar rule $N_r>1$ and geometric visibility; it does not implement expected-user-region checks, zero-target uncertainty, or radar communication freshness. Those checks are future robustness proposals, not silently added conditions of the simple counting policy. Under that policy one target is acceptable only under the assumption that it is the expected owner, whose identity is authenticated by the phone, not radar. If the owner is missed and only an observer is tracked, the count can remain one and miss the threat. Additional targets protect content regardless of whether they can read it, increasing nuisance locking.
+
+Radar coordinates refer to a fixed sensor frame. With translation $t$ and planar rotation $Q(\psi)$, phone-frame position is $p_{\rm phone}=Q(\psi)p_{\rm radar}+t$. A freely moving phone invalidates a previously measured transform. Placement may reduce shared optical occlusion but does not establish through-body detection. Target merging, limited track count, multipath, motion dependence, and stationary-person losses must be tested. Manufacturer wall-mount guidance cannot be assumed to validate tabletop geometry. This approach is chiefly a seated-use proposal, with and without the filter.
+
+\begin{figure}[t]\centering\asset{figures/radar_geometry.pdf}{Offset tabletop radar and phone coordinate frames.}\caption{Proposed radar placement. Sensor-relative distance differs from phone-to-user distance.}\end{figure}
+
+\section{Calibration and Experimental Method}
+\subsection{Provenance and Missing Measurements}
+Table~\ref{tab:angles} separates supplied context, selected scenarios, and unavailable measurements. No value is silently promoted to a calibration result. In particular, 35/40/55/60 cm are the requested scenario distances, not measured anthropometric categories. The paper bundle includes a recording template at \path{paper/calibration_template.csv}. The analysis bundle includes \path{analysis/calibration/observations.csv} and a protocol README in the same directory. Outcome fields are unfilled; these files are recording templates, not experimental data.
+
+\begin{table}[t]\caption{Parameter provenance. All angles are total horizontal angles unless stated otherwise; M = physical measurement unavailable.}\label{tab:angles}\centering\footnotesize
+\begin{tabular}{@{}P{0.25\columnwidth}P{0.38\columnwidth}P{0.26\columnwidth}@{}}\toprule
+Quantity & Reference/source status & Scenario; measured\\\midrule
+Camera & Owner-supplied $70$--$80\degc$ & $75\degc$; M\\
+Filter readability & Owner-supplied $60\degc$ total & $60\degc$; M\\
+Fisheye nominal & Supplied $180$--$210\degc$; Kenko example $180\degc$~\cite{Kenko} & Not effective; M\\
+Fisheye effective & No calibration supplied & Assumed $120\degc$; M\\
+Radar horizontal & Manufacturer $\pm60\degc$~\cite{LD2450} & $120\degc$; M\\
+Radar vertical & Supplied $70\degc$, unverified in cited revision & Unused; M\\
+Viewing distances & Owner-supplied scenarios & 35, 40, 55, 60 cm; M\\\bottomrule
+\end{tabular}\end{table}
+
+\subsection{Protocol for Future Physical Trials}
+Fix the phone, record its model, operating system, camera stream resolution/crop, sensor settings, display brightness, filter make and orientation, and illumination. Mark the display normal and measure the optical-center offset. At each scenario distance, sweep a consenting observer across left and right bearings in small known increments, repeating trials for face detection, identity verification, and standardized content-reading tasks. Record attempted trials as well as successes, timestamps, pose, and occlusion; test both sides rather than forcing symmetry. Report confidence intervals and an explicitly chosen detection/readability criterion. Use repeated sessions and held-out users where appropriate.
+
+For the attachment, repeat after each remounting; record nominal product angle separately from empirical detection. Calibrate actual image geometry with a known pattern if a projection model is needed. For radar, record firmware, mounting height, translation/yaw relative to the phone, person count, target positions, and timeouts. Include a motionless seated owner, a motionless observer, intersecting paths, close targets, and phone movement. Verify count-trigger behavior when the owner leaves the radar sector. Do not label missing tracks as proof of absence.
+
+Measure protection delay from threat onset to the first captured frame containing no readable sensitive pixels, separately from inference and encryption durations. Report distributions, not just averages. Test incorrect PINs, rate limits, stale camera input, concurrent unlock/protect events, and lifecycle transitions. No trials described in this subsection have been represented as completed experiments.
+
+\section{Geometric Analysis}
+For a centered angular sector with total angle $0<\theta<180\degc$ and a plane at perpendicular distance $d$, its lateral intersection is
+\begin{equation}
+ W(d,\theta)=2d\tan(\theta/2).
+ \label{eq:width}
+\end{equation}
+Angles must be converted to radians in numerical software. Camera width $W_c$ and filter-readable width $W_p$ follow (\ref{eq:width}) under the point-origin approximation. For co-aligned symmetric intervals, the blind width is
+\begin{equation}
+ W_B=\max(0,W_p-W_c).
+\end{equation}
+With offsets, use interval intersection instead: $W_B=|I_p|-|I_p\cap I_c|$. Occlusion or detection failures require removing positions from $I_c$, so the centered expression alone cannot quantify actual exposure.
+
+For example, at $d=0.40$ m,
+\begin{align}
+ W_c&=2(0.40)\tan(37.5\degc)=0.61386\text{ m},\\
+ W_p&=2(0.40)\tan(30\degc)=0.46188\text{ m}.
+\end{align}
+The ideal total width margin is 15.20 cm, or 7.60 cm per side, at this plane. It is not a measurement of clearance around a human body. For the supplied camera range of $70$--$80\degc$, the 40 cm width varies from 56.02 to 67.13 cm, illustrating sensitivity to an unmeasured input.
+
+\begin{table}[t]\caption{Calculated scenario widths (cm). F* is an assumed $120\degc$ effective sector intersection, not nominal fisheye image projection. R* uses distance from radar, not from phone.}\label{tab:widths}\centering
+\begin{tabular}{rrrrr}\toprule
+$d$ (cm)&Camera $75\degc$&Filter $60\degc$&F* $120\degc$&R* $120\degc$\\\midrule
+35&53.71&40.41&121.24&121.24\\
+40&61.39&46.19&138.56&138.56\\
+55&84.41&63.51&190.53&190.53\\
+60&92.08&69.28&207.85&207.85\\\bottomrule
+\end{tabular}\end{table}
+
+At fixed angle, width grows linearly with $d$. Increasing owner distance from 35 to 60 cm increases the camera's ideal width from 53.71 to 92.08 cm, a factor of 1.714. It also decreases apparent face size; therefore detection success is not guaranteed to improve. Physical coverage around the owner's shoulders and empirical recognition quality must be evaluated jointly.
+
+At a radar-relative plane distance of 1 m, a $120\degc$ sector has width 3.464 m. This demonstrates why offset placement can cover a large desk region without matching an extreme fisheye's nominal optical angle. Equal F* and R* columns express equal assumed sector angles at equal local plane distances, not interchangeable sensor performance or positions.
+
+\begin{figure}[t]\centering\asset{figures/coverage_vs_distance.pdf}{Calculated width versus local sensor distance.}\caption{Analytical widths for scenario inputs; no empirical confidence interval is implied.}\end{figure}
+
+\section{Separate Simulation}
+The separate Python simulator uses a top-down plane with the phone, designated owner, movable observer points, angular sectors, an independently located radar, and optional simplified body occlusion. Occlusion is disabled by default: visible faces inside the effective camera sector are detected even when their top-down positions lie behind the owner. An explicit checkbox enables an opaque-circle blocking scenario. Position alone cannot establish face visibility because the model lacks head height and over-the-shoulder geometry. Its six modes are app only, app plus filter, app plus fisheye, app plus fisheye plus filter, app plus radar, and app plus radar plus filter. The input defaults agree with Table~\ref{tab:angles}. Unfiltered readability is an assumed forward $160\degc$ sector within a finite plotting range, not a measured display characteristic.
+
+Observer classification distinguishes geometric readability, optical detection, radar detection, and their readable-but-undetected conjunction. System status must additionally evaluate the radar target count; counting a radar-visible observer as automatically protected would misrepresent the policy. The simulator is an instantaneous geometry model and does not establish enrollment, recognition, cryptographic security, or the app's persistent lock state.
+
+Representative exports should include a safe owner-only scene, a lateral camera blind position, filter narrowing, an assumed fisheye detection case, offset radar coverage, and a behind-owner optical occlusion case. These are deterministic illustrative scenes, not participant observations. A circular body model approximates line-of-sight obstruction; readability remains conservative and does not establish an exact anatomy model.
+
+\begin{figure*}[t]\centering
+\includegraphics[width=0.96\textwidth]{figures/scenarios.pdf}
+\caption{Simulator scenarios. Generated snapshots, where supplied, show model behavior rather than measured detector performance.}\label{fig:sim}
+\end{figure*}
+
+\section{Results and Discussion}
+The quantitative result is conditional geometric containment: with aligned $75\degc$ camera and $60\degc$ readable sectors, the ideal angular blind width is zero at each listed plane distance. This is a property of the assumed sectors. It is not a zero false-negative result and does not resolve a hidden observer on or near the screen normal. The supplied phone/filter combination remains the primary configuration to test physically.
+
+A $120\degc$ effective fisheye sector enlarges angular coverage but cannot eliminate the difference between the assumed $160\degc$ unfiltered readable sector and narrower effective sensing. Adding the filter can establish ideal angular containment while leaving shared optical occlusion. Offset radar can cover positions outside the optical sector, but its practical value depends on reliable counting of both owner and observer. The simple more-than-one rule is intentionally conservative about additional people and can nuisance-lock when a second person cannot read the display.
+
+\begin{table}[t]\caption{Qualitative comparison; all benefits are conditional, not empirical rankings.}\centering\footnotesize
+\begin{tabular}{@{}P{0.24\columnwidth}P{0.32\columnwidth}P{0.33\columnwidth}@{}}\toprule
+Approach & Expected geometric effect & Residual cost/limitation\\\midrule
+App + filter & Narrows readable region & Axial shoulder surfing; brightness and axis dependence\\
+Fisheye + app & Enlarges optical sector & Edge quality, alignment, body occlusion\\
+Fisheye + filter + app & Both changes & Same optical blind paths remain\\
+Radar + app & Independent presence frame & No identity; missed/merged/stationary tracks\\
+Radar + filter + app & Narrows readability plus auxiliary count & Desk placement and transform; count failures\\\bottomrule
+\end{tabular}\end{table}
+
+No measured latency, battery use, false-positive/negative rate, recognition accuracy, or comparative participant result is available. AES-GCM addresses integrity/confidentiality of sealed session bytes; the rendering gate addresses current visual exposure; authentication controls restoration. These mechanisms cannot substitute for one another. A camera frame throttle and radar specification are scheduling parameters, not upper bounds on end-to-end response latency.
+
+\section{Limitations and Future Work}
+The first limitation is missing physical calibration. Every scenario should be replaced or supplemented by recorded repeated trials before the paper is described as an experimental validation. The second is authentication validation: face embeddings, PIN rate limiting, tracking continuity, and the no-auto-reveal latch need real-device trials. The implemented extension is not evidence of a validated identity threshold, presentation-attack resistance, or bounded rendering latency.
+
+Further limitations include illumination, face pose, masks, presentation attacks, camera blockage, per-device model performance, filter axis and brightness dependence, and unmodelled vertical geometry. Fisheye distortion and angular detection boundaries require calibration after mounting. Radar adds hardware, communication failure modes, coordinate registration, and identity ambiguity. Static-person and occlusion performance cannot be inferred solely from a nominal sector. A three-target module is not an unlimited people counter.
+
+Future evaluation should measure $B$ and $B_{\rm policy}$ under the same layout, log rendering exposure durations, compare held-out recognition thresholds, and characterize false locks with nearby non-observers. Participants should consent to face enrollment and use synthetic sensitive content. Raw biometric images need not be retained; any stored templates require a documented deletion and secure-storage policy. This paper reports no recruited human-subject study.
+
+\section{Conclusion}
+The readable-but-undetected region provides a shared objective for an adaptive privacy app, a filter, wider optics, and auxiliary radar. Scenario calculations support testing the protector-plus-app configuration first: its assumed readable sector fits within assumed camera coverage. Wider optics and offset radar address different residual regions, while body occlusion and count-policy failures remain. The source inspection, explicit parameter provenance, separate simulation, and calibration protocol provide a reproducible foundation for empirical validation without presenting assumptions as measurements.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}

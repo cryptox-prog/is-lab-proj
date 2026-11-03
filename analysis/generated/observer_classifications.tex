@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Synthetic observer classifications with optical occlusion disabled; visible central faces are detected.}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lllllllllll}
+\hline
+Mode & x m & y m & Readable & Optical & Radar & Detected & Readable but undetected & Breach & System threat & Radar targets \\
+\hline
+App only & 0.6 & 0.4 & True & False & False & False & True & False & True & 0 \\
+App only & 0 & 0.8 & True & True & False & True & False & False & True & 0 \\
+App + privacy & 0.6 & 0.4 & False & False & False & False & False & False & True & 0 \\
+App + privacy & 0 & 0.8 & True & True & False & True & False & False & True & 0 \\
+App + fisheye & 0.6 & 0.4 & True & True & False & True & False & False & True & 0 \\
+App + fisheye & 0 & 0.8 & True & True & False & True & False & False & True & 0 \\
+App + fisheye + privacy & 0.6 & 0.4 & False & True & False & True & False & False & True & 0 \\
+App + fisheye + privacy & 0 & 0.8 & True & True & False & True & False & False & True & 0 \\
+App + radar & 0.6 & 0.4 & True & False & False & False & True & False & True & 2 \\
+App + radar & 0 & 0.8 & True & True & True & True & False & False & True & 2 \\
+App + radar + privacy & 0.6 & 0.4 & False & False & False & False & False & False & True & 2 \\
+App + radar + privacy & 0 & 0.8 & True & True & True & True & False & False & True & 2 \\
+\hline
+\end{tabular}}
+\end{table}

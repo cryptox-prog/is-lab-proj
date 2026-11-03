@@ -1,0 +1,8 @@
+Quantity,Total degrees,Provenance
+Camera,75,Illustrative midpoint of 70--80
+Privacy readability,60,Illustrative assumption
+Bare screen readability,160,Explicit scenario assumption; unmeasured
+Fisheye nominal optical,180,Nominal; projection unknown
+Fisheye effective detection,120,Explicit scenario; unmeasured
+Radar horizontal,120,Reference scenario
+Radar vertical,70,Supplied; unverified; not modeled in 2D

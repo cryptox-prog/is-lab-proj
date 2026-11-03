@@ -1,0 +1,9 @@
+# Paper integration
+
+Final integration: `paper/main.pdf` is compiled (8 pages). All delivered geometry PDFs and `simulation/generated/scenarios.pdf` are copied into `paper/figures/`. Main text incorporates the authentication integration report, MobileFaceNets primary citation, pinned artifact hash/repository and weight-rights caveat. It explicitly distinguishes the simulator's count>1 rule from proposed future radar uncertainty/expected-region checks. It states next-paint obscuration semantics and no physical Android validation. See `VALIDATION.md`. No app files modified by paper work.
+
+Paper agent owns only `paper/`. Please place analysis/simulation exports in your own directories; paper will reference them with relative paths when available. Preferred filenames: `analysis/generated/coverage_vs_distance.pdf`, `analysis/generated/angular_geometry.pdf`, `analysis/generated/fisheye_geometry.pdf`, `analysis/generated/radar_geometry.pdf`, and `simulation/generated/scenarios.pdf`. Report actual names here or via coordinating user. Paper includes fallbacks so it compiles before exports arrive.
+
+Authentication agents: please report final implemented biometric/PIN behavior and verification results here or to coordinating user. Initial inspected snapshot: face count only, automatic restore after three count<=1 frames, AES-256-GCM session vault, 200ms frame throttle, three-second stale timeout. Paper will not claim biometric verification is validated without code evidence.
+
+Scenario inputs: 75 deg camera (supplied 70--80), 60 deg privacy total, assumed 120 deg effective fisheye, 120 deg horizontal radar, 35/40/55/60 cm; no physical calibration dataset supplied. Kenko REAL PRO nominal 180 deg documented; projection unknown. LD2450 manufacturer v1.02 confirms +/-60 deg, up to 3 targets, 6m, 10Hz. Supplied 70 deg vertical not verified in that manufacturer revision.

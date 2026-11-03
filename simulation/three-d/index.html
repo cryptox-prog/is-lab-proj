@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PrivaSc | 3D geometry</title></head>
+<body>
+  <header><strong>PrivaSc <span>3D geometry</span></strong><div id="status" role="status">Loading scene</div><div class="commands"><button id="reset" title="Reset scene" aria-label="Reset scene"><i data-lucide="rotate-ccw"></i></button><button id="capture" title="Download scene image" aria-label="Download scene image"><i data-lucide="camera"></i></button></div></header>
+  <main>
+    <section id="viewport" aria-label="Interactive 3D scene"><div id="scene"></div><div class="scene-tools"><div class="segmented" aria-label="View"><button data-view="perspective" title="Perspective view" aria-label="Perspective view"><i data-lucide="box"></i></button><button data-view="top" title="Top view" aria-label="Top view"><i data-lucide="arrow-down"></i></button><button data-view="camera" title="Phone camera view" aria-label="Phone camera view"><i data-lucide="video"></i></button></div></div><div class="legend"><span><b class="cyan"></b>Camera</span><span><b class="green"></b>Readable angle</span><span><b class="purple"></b>Radar</span><span><b class="red"></b>Exposed observer</span></div><div id="scene-error" hidden></div></section>
+    <aside>
+      <label for="mode">Configuration</label><select id="mode"><option value="0">App only</option><option value="1">App + privacy screen</option><option value="2">App + fisheye</option><option value="3">App + fisheye + privacy screen</option><option value="4">App + radar</option><option value="5">App + radar + privacy screen</option></select>
+      <label for="preset">Scene</label><select id="preset"><option value="shoulder">Visible over shoulder</option><option value="hidden">Hidden behind user</option><option value="lateral">Lateral camera blind spot</option><option value="empty">Owner only</option></select>
+      <div class="metrics"><div><output id="faces">0</output><span>Visible faces</span></div><div><output id="targets">—</output><span>Radar targets</span></div><div><output id="breaches">0</output><span>Exposed</span></div></div>
+      <div class="section-head"><h2>People</h2><button id="add" title="Add observer" aria-label="Add observer"><i data-lucide="user-plus"></i></button></div>
+      <label for="selected">Selected person</label><select id="selected"></select>
+      <div id="person-controls"></div><button id="remove" class="text-command"><i data-lucide="trash-2"></i>Remove observer</button>
+      <h2>Phone & Coverage</h2><div id="phone-controls"></div>
+      <div id="radar-controls" hidden><h2>Radar Placement</h2><div id="radar-inputs"></div></div>
+      <h2>Visibility</h2><label class="check"><input id="occlusion" type="checkbox" checked>Head / body occlusion</label><label class="check"><input id="screen-los" type="checkbox" checked>Screen line of sight</label><label class="check"><input id="rays" type="checkbox" checked>Face sightlines</label><label class="check"><input id="volumes" type="checkbox" checked>Coverage volumes</label>
+      <table><thead><tr><th>Person</th><th>Camera</th><th>Readable</th><th>Radar</th></tr></thead><tbody id="results"></tbody></table>
+    </aside>
+  </main>
+  <footer><span>Illustrative geometry · meters · not detector accuracy</span><span id="detail">Face and display visibility are evaluated independently.</span></footer>
+  <script type="module" src="/src/main.js"></script>
+</body></html>

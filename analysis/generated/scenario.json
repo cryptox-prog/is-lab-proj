@@ -1,0 +1,18 @@
+{
+  "camera_deg": 75.0,
+  "privacy_deg": 60.0,
+  "readable_deg": 160.0,
+  "fisheye_deg": 120.0,
+  "fisheye_nominal_deg": 180.0,
+  "radar_deg": 120.0,
+  "radar_vertical_deg": 70.0,
+  "distance": 0.4,
+  "orientation_deg": 0.0,
+  "radar_x": -0.6,
+  "radar_y": -0.2,
+  "radar_orientation_deg": 0.0,
+  "range_m": 2.0,
+  "body_radius": 0.1,
+  "optical_occlusion": false,
+  "radar_occlusion": false
+}

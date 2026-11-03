@@ -8,10 +8,13 @@
 
 #include <camera_desktop/camera_desktop_plugin.h>
 #include <face_detection_tflite/face_detection_tflite_plugin.h>
+#include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   CameraDesktopPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("CameraDesktopPlugin"));
   FaceDetectionTflitePluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FaceDetectionTflitePlugin"));
+  FlutterSecureStorageWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
 }

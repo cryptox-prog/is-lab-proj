@@ -1,0 +1,1 @@
+trial_id,device_model,os_version,filter_make,filter_axis,lens_model,radar_firmware,modality,distance_m,bearing_deg,elevation_deg,ambient_lux,display_brightness,font_size,face_pose,occlusion,attempts,detections,correct_readings,similarity,owner_verified,radar_count,threat_onset_ms,last_sensitive_pixel_ms,notes

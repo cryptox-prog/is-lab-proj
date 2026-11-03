@@ -8,14 +8,17 @@ import 'orientation_controller.dart';
 import 'content_vault.dart';
 import 'face_monitor.dart';
 import 'face_protection_controller.dart';
+import 'auth_controller.dart';
+import 'auth_dialog.dart';
 
 void main() => runApp(const MyApp());
 
 const crimson = Color(0xFFFF1744);
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.faceMonitor});
+  const MyApp({super.key, this.faceMonitor, this.authController});
   final FaceMonitor? faceMonitor;
+  final AuthController? authController;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -34,13 +37,14 @@ class MyApp extends StatelessWidget {
       ),
       useMaterial3: true,
     ),
-    home: HomeScreen(faceMonitor: faceMonitor),
+    home: HomeScreen(faceMonitor: faceMonitor, authController: authController),
   );
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.faceMonitor});
+  const HomeScreen({super.key, this.faceMonitor, this.authController});
   final FaceMonitor? faceMonitor;
+  final AuthController? authController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -51,11 +55,17 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FaceProtectionController _faces;
   final _vault = ContentVault();
   final _scroll = ScrollController();
-  bool _lastProtected = true;
+  late final AuthController _auth;
+  bool? _lastProtected;
+  int? _lastIdentityEpoch;
+  int? _enrollmentEpoch;
 
   @override
   void initState() {
     super.initState();
+    _auth = widget.authController ?? AuthController();
+    _auth.addListener(_syncVault);
+    _auth.initialize();
     _faces = FaceProtectionController(monitor: widget.faceMonitor);
     _faces.addListener(_syncProtection);
     _faces.start();
@@ -94,11 +104,77 @@ class _HomeScreenState extends State<HomeScreen> {
     text('byline', 'By Alex Morgan / October 6, 2026 / 8 min read');
     await _vault.initialize(content);
     if (!mounted) return;
-    await _vault.setLocked(_orientation.protected || _faces.protected);
+    await _vault.setLocked(_auth.locked);
   }
 
   void _syncProtection() {
-    final protected = _orientation.protected || _faces.protected;
+    if (_lastIdentityEpoch != _faces.identityEpoch) {
+      _lastIdentityEpoch = _faces.identityEpoch;
+      _auth.invalidatePinSession();
+    }
+    final physicalThreat = _orientation.protected || _faces.protected;
+    _auth.updateThreat(
+      physicalThreat || _faces.identityThreat,
+      canPinUnlock: !physicalThreat,
+    );
+    if (_faces.identityAuthorized && !physicalThreat) _auth.authorizeFace();
+  }
+
+  Future<void> _beginEnrollment() async {
+    if (!_auth.configured) {
+      await _showAuth();
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AuthDialog(controller: _auth),
+    );
+    if (!mounted ||
+        confirmed != true ||
+        _auth.locked ||
+        _orientation.protected ||
+        _faces.protected ||
+        _faces.faceCount != 1) {
+      return;
+    }
+    try {
+      _enrollmentEpoch = _faces.identityEpoch;
+      _auth.invalidatePinSession();
+      await _faces.beginFaceEnrollment();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Face enrollment could not start.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _finishEnrollment() async {
+    if (_enrollmentEpoch != _faces.identityEpoch ||
+        _orientation.protected ||
+        _faces.protected) {
+      _faces.cancelFaceEnrollment();
+      return;
+    }
+    try {
+      await _faces.finishFaceEnrollment();
+      _enrollmentEpoch = null;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Face enrollment could not be saved. Retry enrollment.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _syncVault() {
+    final protected = _auth.locked;
     if (_lastProtected == protected) return;
     _lastProtected = protected;
     if (protected) {
@@ -108,12 +184,23 @@ class _HomeScreenState extends State<HomeScreen> {
     _vault.setLocked(protected);
   }
 
+  Future<void> _showAuth() async {
+    if (!_auth.initialized) await _auth.initialize();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AuthDialog(controller: _auth),
+    );
+  }
+
   @override
   void dispose() {
     _orientation.removeListener(_syncProtection);
     _orientation.dispose();
     _faces.removeListener(_syncProtection);
     _faces.dispose();
+    _auth.removeListener(_syncVault);
+    if (widget.authController == null) _auth.dispose();
     _vault.dispose();
     _scroll.dispose();
     super.dispose();
@@ -140,61 +227,109 @@ class _HomeScreenState extends State<HomeScreen> {
       title: const Text('Privacy Screen', style: TextStyle(fontSize: 18)),
       actions: [
         IconButton(
+          tooltip: 'PIN authentication',
+          icon: const Icon(Icons.lock_open_outlined),
+          onPressed: _showAuth,
+        ),
+        IconButton(
           tooltip: 'Settings',
           icon: const Icon(Icons.settings_outlined),
           onPressed: () => showDialog<void>(
             context: context,
-            builder: (context) =>
-                OrientationDialog(controller: _orientation, faces: _faces),
+            builder: (context) => OrientationDialog(
+              controller: _orientation,
+              faces: _faces,
+              onEnroll: _beginEnrollment,
+              onSaveEnrollment: _finishEnrollment,
+            ),
           ),
         ),
       ],
     ),
-    body: _VaultScope(
-      vault: _vault,
-      child: ListView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        itemCount: headings.length + 1,
-        itemBuilder: (context, index) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: index == 0
-                ? const _ArticleHeader()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _SecureText(
-                        'heading-${index - 1}',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w600,
-                          height: 1.3,
+    body: ListenableBuilder(
+      listenable: Listenable.merge([_auth, _vault]),
+      builder: (context, _) {
+        final hidden = _auth.locked || _vault.locked;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ExcludeSemantics(
+              excluding: hidden,
+              child: IgnorePointer(
+                ignoring: hidden,
+                child: Offstage(offstage: hidden, child: _article()),
+              ),
+            ),
+            if (hidden)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(0xFF111113),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.lock_outline, size: 40),
+                        const SizedBox(height: 16),
+                        const Text('Content protected'),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _showAuth,
+                          icon: const Icon(Icons.pin_outlined),
+                          label: Text(
+                            _auth.configured ? 'Unlock with PIN' : 'Set up PIN',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      _Paragraph(
-                        'paragraph-${(index - 1) % paragraphs.length}',
-                      ),
-                      _Paragraph('paragraph-${index % paragraphs.length}'),
-                      const SizedBox(height: 8),
-                      _ArticleImage(index: index),
-                      const SizedBox(height: 10),
-                      _SecureText(
-                        'caption-$index',
-                        style: const TextStyle(
-                          color: Color(0xFF99999F),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      _Paragraph(
-                        'paragraph-${(index + 1) % paragraphs.length}',
-                      ),
-                      const SizedBox(height: 32),
-                    ],
+                      ],
+                    ),
                   ),
-          ),
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+
+  Widget _article() => _VaultScope(
+    vault: _vault,
+    child: ListView.builder(
+      controller: _scroll,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      itemCount: headings.length + 1,
+      itemBuilder: (context, index) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: index == 0
+              ? const _ArticleHeader()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SecureText(
+                      'heading-${index - 1}',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _Paragraph('paragraph-${(index - 1) % paragraphs.length}'),
+                    _Paragraph('paragraph-${index % paragraphs.length}'),
+                    const SizedBox(height: 8),
+                    _ArticleImage(index: index),
+                    const SizedBox(height: 10),
+                    _SecureText(
+                      'caption-$index',
+                      style: const TextStyle(
+                        color: Color(0xFF99999F),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    _Paragraph('paragraph-${(index + 1) % paragraphs.length}'),
+                    const SizedBox(height: 32),
+                  ],
+                ),
         ),
       ),
     ),

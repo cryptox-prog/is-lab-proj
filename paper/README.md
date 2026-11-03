@@ -1,0 +1,9 @@
+# IEEE paper
+
+`main.tex` uses the official `IEEEtran` conference class and IEEE BibTeX style, without layout overrides. Author and affiliation fields are explicit placeholders. Three app screenshot placeholders are deliberate. This is a complete prototype/scenario-analysis manuscript, not an assertion of completed physical trials.
+
+Build from `paper/` with `tectonic -k --keep-logs --reruns 2 main.tex` or `pdflatex main && bibtex main && pdflatex main && pdflatex main`. The official `IEEEtran.cls` and `IEEEtran.bst` are included unmodified from CTAN, with their original license notices. Tectonic fetches remaining packages on its first network-enabled build. Fixed reruns avoid a Tectonic 0.15 bibliography change-detection warning; references are checked in the final logs. `main.pdf` is the compiled deliverable. `references.bib` contains verified bibliographic sources; `supplied_unverified.bib` preserves the two incomplete owner-provided records without citing them as evidence.
+
+Run `MPLCONFIGDIR=/tmp/privacy-paper-mpl simulation/.venv/bin/python paper/generate_architecture.py` from the repository root to regenerate the architecture figure. Geometry/simulator figures are copied into `paper/figures/` from `analysis/generated/` and `simulation/generated/`, so the LaTeX source bundle compiles independently of those directories. Measurements are absent; use `calibration_template.csv` for future trials and preserve raw observations separately from scenario settings. `SOURCE_VERIFICATION.md` records source scope and verification limits.
+
+The manuscript incorporates the authentication extension source and integration report: Android MobileFaceNet, enrollment-derived prototype threshold, PIN PBKDF2 parameters and retry cooldown, and persistent authentication latch. Physical Android validation remains unavailable. No empirical latency, energy, biometric performance, or calibration result is claimed.

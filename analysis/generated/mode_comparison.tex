@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{Scenario configuration comparison. All modes are idealized geometry.}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llllll}
+\hline
+Mode & Readable deg & Optical deg & Radar rule & Optical occlusion & Extra hardware \\
+\hline
+App only & 160 & 75 & none & no & no \\
+App + privacy & 60 & 75 & none & no & yes \\
+App + fisheye & 160 & 120 & none & no & yes \\
+App + fisheye + privacy & 60 & 120 & none & no & yes \\
+App + radar & 160 & 75 & count > 1 & no & yes \\
+App + radar + privacy & 60 & 75 & count > 1 & no & yes \\
+\hline
+\end{tabular}}
+\end{table}

@@ -1,0 +1,1 @@
+"""Reproducible illustrative geometric calculations."""

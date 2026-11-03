@@ -6,8 +6,20 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:privacy_screen_software/main.dart';
+import 'package:privacy_screen_software/auth_controller.dart';
+import 'package:privacy_screen_software/face_verification.dart';
 
 import 'fake_face_monitor.dart';
+import 'identity_protection_test.dart' show IdentityMonitor;
+
+class WidgetAuthStore implements AuthSecureStore {
+  WidgetAuthStore(this.values);
+  final Map<String, String> values;
+  @override
+  Future<String?> read(String key) async => values[key];
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,12 +27,21 @@ void main() {
   const codec = StandardMethodCodec();
   final calls = <String>[];
   late FakeFaceMonitor faceMonitor;
+  late AuthController auth;
+  final credentials = <String, String>{};
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
+  setUpAll(() async {
+    final setup = AuthController(store: WidgetAuthStore(credentials));
+    await setup.initialize();
+    await setup.setPin('123456', '123456');
+    setup.dispose();
+  });
   setUp(() {
     calls.clear();
     faceMonitor = FakeFaceMonitor();
+    auth = AuthController(store: WidgetAuthStore(Map.of(credentials)));
     messenger.setMockMethodCallHandler(const MethodChannel(channel), (
       call,
     ) async {
@@ -28,10 +49,16 @@ void main() {
       return null;
     });
   });
-  tearDown(
-    () =>
-        messenger.setMockMethodCallHandler(const MethodChannel(channel), null),
-  );
+  tearDown(() {
+    messenger.setMockMethodCallHandler(const MethodChannel(channel), null);
+    auth.dispose();
+  });
+
+  Future<void> unlock(WidgetTester tester) async {
+    final success = await tester.runAsync(() => auth.verifyPin('123456'));
+    expect(success, isTrue);
+    await tester.pump();
+  }
 
   Future<void> send(WidgetTester tester, double theta, double phi) async {
     await messenger.handlePlatformMessage(
@@ -82,7 +109,9 @@ void main() {
       await tester.pump();
     }
 
-    await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
+    await tester.pumpWidget(
+      MyApp(faceMonitor: faceMonitor, authController: auth),
+    );
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(calls, contains('listen'));
@@ -129,8 +158,11 @@ void main() {
   });
 
   testWidgets('Home screen shows dark placeholder content', (tester) async {
-    await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
+    await tester.pumpWidget(
+      MyApp(faceMonitor: faceMonitor, authController: auth),
+    );
     await send(tester, 0, 0);
+    await unlock(tester);
     await waitFor(tester, find.text('Notes on everyday life'));
 
     expect(find.text('Privacy Screen'), findsOneWidget);
@@ -149,7 +181,39 @@ void main() {
   });
 
   testWidgets(
-    'Thresholds protect text and images outside the dialog and restore automatically',
+    'Only fresh authorized identity results restore a face-triggered lock',
+    (tester) async {
+      final identityMonitor = IdentityMonitor();
+      await tester.pumpWidget(
+        MyApp(faceMonitor: identityMonitor, authController: auth),
+      );
+      await send(tester, 0, 0);
+      expect(find.text('Content protected'), findsOneWidget);
+      for (var i = 0; i < 3; i++) {
+        identityMonitor.identity(FaceVerificationStatus.authorized);
+      }
+      await waitFor(tester, find.text('Notes on everyday life'));
+      identityMonitor.emit(2);
+      await tester.pump();
+      expect(find.text('Notes on everyday life'), findsNothing);
+      for (var i = 0; i < 3; i++) {
+        identityMonitor.emit(1);
+      }
+      identityMonitor.identity(FaceVerificationStatus.unauthorized);
+      await tester.pump();
+      expect(auth.locked, isTrue);
+      expect(find.text('Content protected'), findsOneWidget);
+      for (var i = 0; i < 3; i++) {
+        identityMonitor.identity(FaceVerificationStatus.authorized);
+      }
+      await waitFor(tester, find.text('Notes on everyday life'));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'Threats remove text and images; safe readings alone cannot restore them',
     (tester) async {
       final semantics = tester.ensureSemantics();
       tester.view.physicalSize = const Size(360, 800);
@@ -157,9 +221,12 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       try {
-        await tester.pumpWidget(MyApp(faceMonitor: faceMonitor));
+        await tester.pumpWidget(
+          MyApp(faceMonitor: faceMonitor, authController: auth),
+        );
         expect(find.text('Notes on everyday life'), findsNothing);
         await send(tester, 0, 0);
+        await unlock(tester);
         await waitFor(tester, find.text('Notes on everyday life'));
         await tester.scrollUntilVisible(find.byType(Image).first, 300);
         await tester.pumpAndSettle();
@@ -167,20 +234,24 @@ void main() {
         await send(tester, -math.pi / 2, 0);
         expect(find.byType(Image), findsNothing);
         expect(find.text('A slower start'), findsNothing);
-        await tester.drag(find.byType(ListView), const Offset(0, 5000));
         await tester.pumpAndSettle();
-        expect(find.bySemanticsLabel(RegExp('Encrypted text')), findsWidgets);
+        expect(find.text('Content protected'), findsOneWidget);
         expect(
           find.bySemanticsLabel(RegExp('Notes on everyday life')),
           findsNothing,
         );
         await send(tester, 0, 0);
-        await waitFor(tester, find.text('Notes on everyday life'));
+        expect(auth.locked, isTrue);
+        expect(find.byType(Image), findsNothing);
+        await unlock(tester);
+        await waitFor(tester, find.byType(Scrollable));
         await tester.scrollUntilVisible(find.byType(Image).first, 300);
         await tester.pumpAndSettle();
         await send(tester, 0, math.pi / 2);
         expect(find.byType(Image), findsNothing);
         await send(tester, 0, 0);
+        expect(auth.locked, isTrue);
+        await unlock(tester);
         await waitFor(tester, find.byType(Image));
         faceMonitor.emit(2);
         await tester.pump();
@@ -190,6 +261,10 @@ void main() {
         expect(find.byType(Image), findsNothing);
         faceMonitor.emit(1);
         faceMonitor.emit(1);
+        await tester.pump();
+        expect(auth.locked, isTrue);
+        expect(find.byType(Image), findsNothing);
+        await unlock(tester);
         await waitFor(tester, find.byType(Image));
         await send(tester, math.pi / 2, 0);
         faceMonitor.emit(1);
@@ -198,6 +273,8 @@ void main() {
         await tester.pump();
         expect(find.byType(Image), findsNothing);
         await send(tester, 0, 0);
+        expect(auth.locked, isTrue);
+        await unlock(tester);
         await waitFor(tester, find.byType(Image));
         faceMonitor.fail();
         await tester.pump();

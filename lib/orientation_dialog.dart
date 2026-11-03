@@ -8,9 +8,13 @@ class OrientationDialog extends StatelessWidget {
     super.key,
     required this.controller,
     required this.faces,
+    this.onEnroll,
+    this.onSaveEnrollment,
   });
   final OrientationController controller;
   final FaceProtectionController faces;
+  final Future<void> Function()? onEnroll;
+  final Future<void> Function()? onSaveEnrollment;
 
   Widget _slider(String label, double value, ValueChanged<double> update) =>
       Column(
@@ -84,6 +88,39 @@ class OrientationDialog extends StatelessWidget {
                   ),
               ],
             ),
+            const SizedBox(height: 12),
+            Text(faces.identityStatus),
+            if (faces.identitySupported) ...[
+              const SizedBox(height: 12),
+              if (faces.enrolling) ...[
+                LinearProgressIndicator(
+                  value: (faces.enrollmentProgress / 8).clamp(0, 1),
+                ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: faces.enrollmentProgress >= 8
+                      ? onSaveEnrollment
+                      : null,
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save face'),
+                ),
+                TextButton(
+                  onPressed: faces.cancelFaceEnrollment,
+                  child: const Text('Cancel enrollment'),
+                ),
+              ] else
+                OutlinedButton.icon(
+                  onPressed: !faces.protected && faces.faceCount == 1
+                      ? onEnroll
+                      : null,
+                  icon: const Icon(Icons.face_outlined),
+                  label: Text(
+                    faces.faceEnrolled
+                        ? 'Replace enrolled face'
+                        : 'Enroll face',
+                  ),
+                ),
+            ],
           ],
         ),
       ),
