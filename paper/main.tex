@@ -1,24 +1,28 @@
-\RequirePackage[T1]{fontenc}
-\documentclass[conference]{IEEEtran}
-\usepackage{amsmath,amssymb,graphicx,booktabs,array,url}
-\usepackage[hidelinks]{hyperref}
-\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
-\newcommand{\degc}{^{\circ}}
-\newcommand{\asset}[2]{\IfFileExists{#1}{\includegraphics[width=\columnwidth]{#1}}{\fbox{\parbox[c][25mm][c]{0.92\columnwidth}{\centering #2\\Illustrative figure pending export}}}}
-\newcommand{\shot}[2]{\fbox{\parbox[c][28mm][c]{0.92\columnwidth}{\centering\textbf{App screenshot placeholder #1}\\#2\\No device capture supplied.}}}
-\title{Context-Aware Visual Privacy on Smartphones: Adaptive Protection and Readable-but-Undetected Regions}
-\author{\IEEEauthorblockN{Author details pending}\IEEEauthorblockA{University prototype project\\Institution and contact details pending}}
-\begin{document}
-\maketitle
-\begin{abstract}
-An observer can read a smartphone while remaining outside its front-camera detection region. This paper studies that residual exposure through a Flutter privacy prototype and a geometric comparison of three complementary approaches: a privacy-screen protector, a clip-on fisheye, and an external human-tracking radar. The application combines local face counting, orientation sensing, and a session-only AES-256-GCM vault. An Android-local embedding verifier, PIN fallback, and reauthorization latch extend the baseline; physical validation remains pending. We define the readable-but-undetected region as readable positions outside effective sensing coverage. Using explicitly assumed scenario angles of 75 degrees for the camera, 60 degrees for filter readability, and 120 degrees for effective fisheye coverage, analytical widths are evaluated at 35, 40, 55, and 60 cm. At 40 cm the camera and filtered readable widths are 61.39 and 46.19 cm, respectively. Their ideal aligned containment does not imply protection against body occlusion. A separate simulator illustrates all six sensor/filter combinations. No physical calibration dataset, recognition benchmark, or measured exposure latency is available; numerical results are geometric estimates rather than device measurements. A calibration protocol and fillable data schema support subsequent empirical evaluation.
-\end{abstract}
-\begin{IEEEkeywords}
-shoulder surfing, visual privacy, AES-GCM, face verification, privacy filter, fisheye, radar
-\end{IEEEkeywords}
+Require Package[T1]{fontenc}
+documentclass[conference]{IEEEtran}
+usepackage[url, array, booktabs, graphicx, amssymb,amsmath]{url}
+usepackage{hyperref}usepackage[hidelinks]{hyperref}
+newcolumntype{P}[1]{>{raggedrightarraybackslash}p{#1}}
+ewcommand{degc}{^{circ}}
+ewcommand{asset}[2]{IfFileExists{#1}{includegraphics[width=columnwidth]{#1}}{fbox{parbox[c][25mm][c]{0.92columnwidth}{centering #2Illustrative figure pending export}}}}
+newcommand{shot}[2]{fbox{parbox[c][28mm][c]{0.92columnwidth}{centeringtextbf{App screenshot placeholder #1}#2No device capture supplied.}}} }}}
+title{Context-Aware Visual Privacy on Smartphones: Adaptative Protection and Regions That Are Readable-but-Undetected}
+author{IEEEauthorblockN{Author details pending}IEEEauthorblockA{University prototype projectInstitution and contact details pending}}
+begin{document}
+maketitle
+begin{abstract}
+An observer can read a smartphone outside its front-camera detection range. This study looks at residual exposure using a Flutter privacy prototype and a geometric comparison of three different methods: a privacy-screen protector, a clip-on fisheye, and an outside human-tracking radar. Local face counting, orientation detection, and a session-only AES-256-GCM vault are combined in the application. An Android-local embedding verifier, PIN fallback, and reauthorization latch go above and beyond the baseline; physical validation is still to be completed. The readable but undiscovered region consists of readable locations outside of actual sensing range. Analytical widths are calculated at 35, 40, 55, and 60 cm utilizing clearly assumed scenario angles of 75 degrees for the camera, 60 degrees for filter readability, and 120 degrees for useful fisheye coverage. The camera and filtered readable widths are respectively 61.39 and 46.19 cm at 40 cm. Their perfect aligned containment doesn't mean defense against body occlusion. A different simulator shows every one of the six sensor/filter combinations. There isn't a physical calibration dataset, recognition benchmark, or measured exposure latency; hence, numerical results are based on geometric estimates instead of device readings. A calibration method and editable data schema help for later empirical assessment.
+begin{abstract} The following paper examines the relationship between the two main categories of abstract nouns: concrete abstract nouns and abstract abstract nouns. We investigate their characteristics, functions, and the ongoing debate about their classification. We also explore the possibility of a third category of abstract nouns that bridges the gap between these two groups. Finally, we offer a re-evaluation of the current categorization and propose an alternative framework that better reflects the nuances of abstract nouns. end{abstract}
+begin{IEEEkeywords}
+Visual privacy, AES-GCM, face verification, shoulder surfing, fisheye, radar, privacy filter
+end{IEEEkeywords}
 
-\section{Introduction}
-Sensitive text and images remain exposed while a legitimate user views them. Encryption of stored bytes cannot prevent an observer from reading those rendered pixels. Shoulder surfing also depends on context: Abdrabou et al. study opportunistic observation in public transportation using mobile eye tracking and discuss the methodological difficulty of studying it in natural settings~\cite{Abdrabou2025Shoulder}. A privacy mechanism therefore needs both a rendering policy and an account of where an observer can remain unseen.
+subsection{Introduction}
+Sensitive material and photographs stay visible when a legitimate user is seeing them. Stored bytes' encryption cannot stop a reader from seeing those displayed pixels. Shoulder surfing also depends on the situation: Abdrabou et al. investigate opportunistic observation in public transportation using mobile eye tracking and highlight the technical challenge of studying it in natural settings~cite{Abdrabou2025Shoulder}. Therefore, a privacy technology has to have a rendering policy as well as an account of where an observer might be undetected.
+
+The frontal camera and device orientation are sensed by the motivating prototype. Project owner claims the phone to have a privacy-screen protector; the main physical setup intended is the protector-plus-app combination. There is no calibration record with the installed filter or the camera. Thus, we offer a software examination and scenario analysis rather than a completed physical test.
+
+A often occurring geometrical goal, the readable-but-undetected region, connects the app to three sensing/filtering techniques. We calculate finite-plane widths, differentiate between optical specifications and practical detecting angles, and create radar counting without giving radar targets identity. Furthermore described are repeatable calibration and authentication assessment methods. Given reference ranges and explicit assumptions, the numerical tables are calculated; they should not be taken as privacy or measuring accuracy guarantees.
 
 The motivating prototype detects faces through the front camera and monitors device orientation. The phone is reported by the project owner to have a privacy-screen protector; the protector-plus-app combination is the primary intended physical configuration. Neither the installed filter nor the camera has an accompanying calibration record. We consequently present a software inspection and scenario analysis, not a completed physical experiment.
 
