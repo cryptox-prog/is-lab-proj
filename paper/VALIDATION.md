@@ -1,22 +1,17 @@
-# Paper validation
+Validation of work on paper
+At last, tectonic 0.15.0, formal IEEEtran conference class and IEEEtran BibTeX style are built. From this directory, execute command:
 
-Final paper build: Tectonic 0.15.0, official IEEEtran conference class and IEEEtran BibTeX style. Command from this directory:
+/tmp/tectonic --reruns 2 main.tex -C -k --keep-logs
+The portable compiler is a transitory tool; regular TeX setup or another Tectonic installation may create the same sources using the README instructions.
 
-```sh
-/tmp/tectonic -C -k --keep-logs --reruns 2 main.tex
-```
-
-The portable compiler is a temporary tool; a standard TeX installation or another Tectonic installation can build the same sources using the README commands.
-
-- Output: `main.pdf`, eight US-letter pages.
-- BibTeX completed without warnings.
-- Final LaTeX log: no undefined references/citations, missing glyphs, overfull boxes, or underfull horizontal boxes.
-- One underfull vertical-box diagnostic on page 4 (badness 2253) reflects float/text spacing; the rendered page was inspected and has no overlap or clipped content.
-- Rendered PDF pages 1, 2, 4, 7 and 8 were inspected during editing. Geometry charts and architecture were also inspected as source images.
-- All final figure paths resolve within `paper/figures/`; paper compilation does not depend on adjacent analysis/simulator directories.
-- Analysis checker passed: numerical tables, all six classifications, scenario inputs, LaTeX snippets and 26 figure files. Paper width table agrees with the generated CSV after unit conversion.
-- Three app screenshot placeholders and author/affiliation placeholders are intentional.
-- Four of the six owner-supplied references are verified to the stated evidence scope. Two incomplete records are preserved separately; see `SOURCE_VERIFICATION.md`.
-- Android physical trials, calibration, biometric FAR/FRR, liveness and rendering latency are not validated by this PDF build. Application test/APK results are owned by the app integration work and are not inferred here.
-
-No empirical outcomes have been filled into either `paper/calibration_template.csv` or `analysis/calibration/observations.csv`.
+Output: eight US-letter pages, main.pdf.
+BibTeX finished without warnings.
+Last LaTeX log: no overfull boxes, underfull horizontal boxes, missing glyphs, or unreported references/citations.
+Page 4's one underfull vertical-box diagnostic (badness 2253) shows float/text spacing; the displayed page was examined and has no overlap or truncated information.
+During editing, rendered PDF pages 1, 2, 4, 7 and 8 were checked. Also examined as source photographs were architecture and geometry charts.
+Every last figure path resolves inside paper/figures/; paper compilation does not rely on local analysis/simulator folders.
+Passed checker for analysis: numerical tables, all six classifications, scenario inputs, LaTeX snippets, and 26 figure files. The paper width table corresponds with the produced CSV after unit conversion.
+Intentional are three app screenshot placeholders and author/affiliation placeholders.
+Four of the six owner-provided references are confirmed to fit the mentioned range of evidence. Separate preservation of two incomplete records; consult SOURCE_VERIFICATION.md.
+This PDF build does not support Android physical tests, calibration, biometric FAR/FRR, liveness, and rendering latency. The app integration work owns application test/APK results and they are not inferred here.
+Neither paper/calibration_template.csv nor analysis/calibration/observations.csv has empirical results loaded.
