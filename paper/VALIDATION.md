@@ -1,7 +1,7 @@
 Validation of work on paper
 At last, tectonic 0.15.0, formal IEEEtran conference class and IEEEtran BibTeX style are built. From this directory, execute command:
 
-/tmp/tectonic --reruns 2 main.tex -C -k --keep-logs
+/tmp/tectonic -C -k --keep-logs --reruns 2 main.tex
 The portable compiler is a transitory tool; regular TeX setup or another Tectonic installation may create the same sources using the README instructions.
 
 Output: eight US-letter pages, main.pdf.
